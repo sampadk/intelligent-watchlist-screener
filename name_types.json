@@ -1,0 +1,884 @@
+{
+  "version": "1.0",
+  "notes": "Onomastics-driven name types with algorithm weights for entity screening. Ordered by rough global prevalence.",
+  "types": [
+    {
+      "id": "han_chinese_pinyin",
+      "display_name": "Han Chinese (Pinyin, family-name first)",
+      "global_prevalence_rank": 1,
+      "estimated_population_share": 0.18,
+      "origin_group": ["China", "Global Chinese diaspora"],
+      "scripts": ["Han (Chinese characters)", "Latin (Pinyin transliteration)"],
+      "name_order": "family_first",
+      "structure": "mostly two or three tokens; 1-character family name + 1–2-character given name",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Wang Wei", "Li Na", "Zhang Yiming", "Chen Long"],
+      "typical_ambiguities": [
+        "Family name comes first (Zhang San) vs Westernized order (San Zhang).",
+        "Spacing and hyphenation of given names vary (e.g., Li-Hua vs Li Hua)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.35,
+        "levenshtein_normalized": 0.15,
+        "thefuzz_token_set_ratio": 0.20,
+        "cosine_similarity": 0.30
+      },
+      "matching_hints": [
+        "Allow order-insensitive matching or try both orders.",
+        "Prioritize first-token exact/near-exact (family) with higher weight."
+      ]
+    },
+    {
+      "id": "indian_subcontinent_latinized",
+      "display_name": "Indian Subcontinent (Latinized, multi-script origins)",
+      "global_prevalence_rank": 2,
+      "estimated_population_share": 0.17,
+      "origin_group": ["India", "Pakistan", "Bangladesh", "Nepal", "Sri Lanka"],
+      "scripts": ["Devanagari", "Bengali", "Tamil", "Telugu", "Malayalam", "Gurmukhi", "Urdu", "Latin transliterations"],
+      "name_order": "given_first",
+      "structure": "varies widely; given + family; initials; patronymic as middle; multiple tokens",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "high",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Ravi Kumar", "A. R. Rahman", "Saira Banu", "Md. Imran Ali", "Sundar Pichai"],
+      "typical_ambiguities": [
+        "Initials and patronymics (e.g., 'A. R. Rahman').",
+        "Alternate spellings due to transliteration (Mohammed/Muhammad/Mohamad).",
+        "Compound names and varied token counts."
+      ],
+      "weights": {
+        "jaro_winkler": 0.25,
+        "levenshtein_normalized": 0.20,
+        "thefuzz_token_set_ratio": 0.30,
+        "cosine_similarity": 0.25
+      },
+      "matching_hints": [
+        "Normalize common honorifics/abbreviations (Md., Shri, Smt.).",
+        "Token-set helps across reordered or missing middle tokens."
+      ]
+    },
+    {
+      "id": "arabic_urdu_persian_latinized",
+      "display_name": "Arabic/Urdu/Persian (Latinized, with particles)",
+      "global_prevalence_rank": 3,
+      "estimated_population_share": 0.12,
+      "origin_group": ["MENA", "Iran", "Pakistan", "Afghanistan", "diaspora"],
+      "scripts": ["Arabic", "Perso-Arabic", "Latin transliterations"],
+      "name_order": "given_first",
+      "structure": "multi-token; given + patronymic + family; nisbah; kunya (Abu/Bint/Ibn)",
+      "particles": ["al", "el", "bin", "ibn", "bint", "abu", "abd", "ul", "ud", "al-"],
+      "diacritics": false,
+      "transliteration_variance": "very_high",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Abdul Rahman Al-Saud", "Mohammad bin Salman", "Ali al-Hussein", "Hossein Dehghan"],
+      "typical_ambiguities": [
+        "Particles appear with/without hyphens and spaces (al, al-).",
+        "Multiple accepted spellings (Muhammad/Mohamed/Mohamad).",
+        "Family tokens can appear in various positions."
+      ],
+      "weights": {
+        "jaro_winkler": 0.22,
+        "levenshtein_normalized": 0.18,
+        "thefuzz_token_set_ratio": 0.40,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Downweight/normalize particles (al, bin, bint).",
+        "Token-set ratio is powerful due to flexible token positions."
+      ]
+    },
+    {
+      "id": "spanish_double_surname",
+      "display_name": "Spanish (Double Surname, compound given names)",
+      "global_prevalence_rank": 4,
+      "estimated_population_share": 0.08,
+      "origin_group": ["Spain", "Latin America", "diaspora"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given (often compound) + paternal surname + maternal surname",
+      "particles": ["de", "del", "de la", "y"],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["José Luis Rodríguez Zapatero", "María del Carmen García López"],
+      "typical_ambiguities": [
+        "Omission of second surname in some jurisdictions.",
+        "Particles may be attached or split (de la / dela)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.20,
+        "levenshtein_normalized": 0.15,
+        "thefuzz_token_set_ratio": 0.45,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Token-set handles dropped/added second surnames.",
+        "Normalize particles and ignore accent/diacritics for baseline match."
+      ]
+    },
+    {
+      "id": "english_anglo",
+      "display_name": "English / Anglo",
+      "global_prevalence_rank": 5,
+      "estimated_population_share": 0.06,
+      "origin_group": ["UK", "USA", "Canada", "Australia", "NZ", "diaspora"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + middle (optional) + surname; hyphenations possible",
+      "particles": ["O'", "Mc", "Mac"],
+      "diacritics": false,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["John A. Smith", "Mary-Jane O'Connor", "McKenzie Brown"],
+      "typical_ambiguities": [
+        "Hyphenated surnames; apostrophes in O'/D'.",
+        "Middle initials variably present."
+      ],
+      "weights": {
+        "jaro_winkler": 0.30,
+        "levenshtein_normalized": 0.20,
+        "thefuzz_token_set_ratio": 0.35,
+        "cosine_similarity": 0.15
+      },
+      "matching_hints": [
+        "Normalize punctuation (O', D', hyphens).",
+        "Token-set helps when middle tokens are present/absent."
+      ]
+    },
+    {
+      "id": "russian_east_slavic_patronymic",
+      "display_name": "Russian / East Slavic (with patronymic)",
+      "global_prevalence_rank": 6,
+      "estimated_population_share": 0.05,
+      "origin_group": ["Russia", "Ukraine", "Belarus", "diaspora"],
+      "scripts": ["Cyrillic", "Latin transliterations"],
+      "name_order": "given_first",
+      "structure": "given + patronymic + surname; gendered endings (ova/evna/ich)",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Vladimir Vladimirovich Putin", "Olga Sergeyevna Ivanova"],
+      "typical_ambiguities": [
+        "Patronymic variably included in foreign forms.",
+        "Transliteration variants (Yevgeny/Evgenii)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.28,
+        "levenshtein_normalized": 0.17,
+        "thefuzz_token_set_ratio": 0.35,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Treat patronymic as optional token.",
+        "Consider equivalence tables for common transliteration variants."
+      ]
+    },
+    {
+      "id": "japanese_romaji",
+      "display_name": "Japanese (Romaji, family-name first)",
+      "global_prevalence_rank": 7,
+      "estimated_population_share": 0.025,
+      "origin_group": ["Japan", "diaspora"],
+      "scripts": ["Kanji", "Kana", "Latin (Romaji)"],
+      "name_order": "family_first",
+      "structure": "typically two tokens; short family names common",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Tanaka Ken", "Suzuki Ichiro", "Sato Naoko"],
+      "typical_ambiguities": [
+        "Order inversion in Western contexts.",
+        "Long vowels/romaji variants (ou/ō, uu/ū)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.33,
+        "levenshtein_normalized": 0.12,
+        "thefuzz_token_set_ratio": 0.20,
+        "cosine_similarity": 0.35
+      },
+      "matching_hints": [
+        "Try both orders; keep emphasis on first token as family name.",
+        "Consider normalization of macrons/long vowels."
+      ]
+    },
+    {
+      "id": "korean_rr_mr",
+      "display_name": "Korean (Revised Romanization / McCune–Reischauer)",
+      "global_prevalence_rank": 8,
+      "estimated_population_share": 0.018,
+      "origin_group": ["Korea", "diaspora"],
+      "scripts": ["Hangul", "Hanja (limited)", "Latin (RR/MR)"],
+      "name_order": "family_first",
+      "structure": "one-syllable family + two-syllable given; spacing varies",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Kim Min-ji", "Park Ji-sung", "Lee Byung-hun"],
+      "typical_ambiguities": [
+        "Spacing/hyphenation in given names (Minji/Min-ji).",
+        "Multiple romanization systems (Lee/Yi/Rhee)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.32,
+        "levenshtein_normalized": 0.13,
+        "thefuzz_token_set_ratio": 0.22,
+        "cosine_similarity": 0.33
+      },
+      "matching_hints": [
+        "Treat hyphens and spacing as optional.",
+        "Try both orders; prioritize family token match."
+      ]
+    },
+    {
+      "id": "vietnamese",
+      "display_name": "Vietnamese (Latin script, diacritics)",
+      "global_prevalence_rank": 9,
+      "estimated_population_share": 0.013,
+      "origin_group": ["Vietnam", "diaspora"],
+      "scripts": ["Latin (Quốc Ngữ)"],
+      "name_order": "family_first",
+      "structure": "family + middle + given; many common family names",
+      "particles": [],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Nguyễn Thị Minh Khai", "Trần Văn An", "Lê Hoài Nam"],
+      "typical_ambiguities": [
+        "Very common family names cause collisions.",
+        "Diacritics frequently dropped in foreign systems."
+      ],
+      "weights": {
+        "jaro_winkler": 0.27,
+        "levenshtein_normalized": 0.18,
+        "thefuzz_token_set_ratio": 0.25,
+        "cosine_similarity": 0.30
+      },
+      "matching_hints": [
+        "Downweight family token uniqueness; emphasize full-string similarity.",
+        "Ignore diacritics for baseline, but store diacritic-aware variant for precision."
+      ]
+    },
+    {
+      "id": "indonesian_malay",
+      "display_name": "Indonesian/Malay (mononyms common, bin/binti usage)",
+      "global_prevalence_rank": 10,
+      "estimated_population_share": 0.013,
+      "origin_group": ["Indonesia", "Malaysia", "Brunei", "Singapore Malay"],
+      "scripts": ["Latin", "Jawi (historical/limited)"],
+      "name_order": "given_first",
+      "structure": "mononym or given + bin/binti + father's name; sometimes family-like surname",
+      "particles": ["bin", "binti"],
+      "diacritics": false,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Sukarno", "Suharto", "Aisyah binti Ahmad", "Mohd bin Ali"],
+      "typical_ambiguities": [
+        "Mononyms break surname-based logic.",
+        "Bin/Binti sometimes omitted abroad; 'Mohd' abbreviation common."
+      ],
+      "weights": {
+        "jaro_winkler": 0.34,
+        "levenshtein_normalized": 0.16,
+        "thefuzz_token_set_ratio": 0.30,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Support mononym: treat missing surname as null, not mismatch.",
+        "Normalize bin/binti and common 'Mohd/Muhd' abbreviations."
+      ]
+    },
+    {
+      "id": "turkish",
+      "display_name": "Turkish (Latin, diacritics, agglutinative)",
+      "global_prevalence_rank": 11,
+      "estimated_population_share": 0.011,
+      "origin_group": ["Türkiye", "diaspora"],
+      "scripts": ["Latin (with diacritics)"],
+      "name_order": "given_first",
+      "structure": "given + surname; some compound given names",
+      "particles": [],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Recep Tayyip Erdoğan", "Ahmet Yılmaz", "Ayşe Demir"],
+      "typical_ambiguities": [
+        "Diacritics (ğ, ş, ç, ı, İ, ö, ü) lost in foreign forms.",
+        "Compound given names treated as single token abroad."
+      ],
+      "weights": {
+        "jaro_winkler": 0.26,
+        "levenshtein_normalized": 0.24,
+        "thefuzz_token_set_ratio": 0.28,
+        "cosine_similarity": 0.22
+      },
+      "matching_hints": [
+        "Normalize diacritics to base letters for baseline; keep diacritic variant for precision.",
+        "Treat compound given names as flexible tokens."
+      ]
+    },
+    {
+      "id": "persian_farsi_latinized",
+      "display_name": "Persian (Farsi, Latinized)",
+      "global_prevalence_rank": 12,
+      "estimated_population_share": 0.010,
+      "origin_group": ["Iran", "diaspora"],
+      "scripts": ["Perso-Arabic", "Latin transliteration"],
+      "name_order": "given_first",
+      "structure": "given + family; occasional compound tokens",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Hassan Rouhani", "Shirin Ebadi", "Reza Pahlavi"],
+      "typical_ambiguities": [
+        "Multiple Latin spellings (Reza/Riza; Khomeini/Khomaini).",
+        "Particles sometimes borrowed from Arabic (rare)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.24,
+        "levenshtein_normalized": 0.21,
+        "thefuzz_token_set_ratio": 0.30,
+        "cosine_similarity": 0.25
+      },
+      "matching_hints": [
+        "Use transliteration equivalence lists.",
+        "Token-set helpful for middle tokens present/absent."
+      ]
+    },
+    {
+      "id": "bengali_bangla",
+      "display_name": "Bengali/Bangla (Latinized or Bengali script)",
+      "global_prevalence_rank": 13,
+      "estimated_population_share": 0.010,
+      "origin_group": ["Bangladesh", "West Bengal (India)"],
+      "scripts": ["Bengali", "Latin transliteration"],
+      "name_order": "given_first",
+      "structure": "given + family or multi-token Muslim names",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "high",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Sheikh Hasina", "Rabindranath Tagore", "Shakib Al Hasan"],
+      "typical_ambiguities": [
+        "Honorifics and middle religious tokens vary (Al, Md.).",
+        "Multiple Latin spellings (Hasan/Hasan/Hassan)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.24,
+        "levenshtein_normalized": 0.21,
+        "thefuzz_token_set_ratio": 0.34,
+        "cosine_similarity": 0.21
+      },
+      "matching_hints": [
+        "Normalize 'Md.', 'Sk.', 'Al' as low-signal tokens.",
+        "Token-set helps across variable middle tokens."
+      ]
+    },
+    {
+      "id": "italian",
+      "display_name": "Italian (Latin, diacritics rare)",
+      "global_prevalence_rank": 14,
+      "estimated_population_share": 0.009,
+      "origin_group": ["Italy", "diaspora"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + surname; particles sometimes present",
+      "particles": ["di", "da", "de", "della", "del"],
+      "diacritics": false,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Giuseppe Verdi", "Leonardo Di Caprio", "Maria De Luca"],
+      "typical_ambiguities": [
+        "Particles may attach or separate (DeLuca/De Luca).",
+        "Regional variants in surnames."
+      ],
+      "weights": {
+        "jaro_winkler": 0.28,
+        "levenshtein_normalized": 0.22,
+        "thefuzz_token_set_ratio": 0.30,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Normalize and optionally downweight particles.",
+        "Hyphen/space tolerance for particle+surname."
+      ]
+    },
+    {
+      "id": "german",
+      "display_name": "German (umlauts and ß)",
+      "global_prevalence_rank": 15,
+      "estimated_population_share": 0.009,
+      "origin_group": ["Germany", "Austria", "Switzerland (German)"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + surname",
+      "particles": ["von", "zu"],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Jürgen Müller", "Johann Weiß", "Hannah von Braun"],
+      "typical_ambiguities": [
+        "Umlauts and ß become ae/oe/ue and ss.",
+        "Particles may be omitted abroad."
+      ],
+      "weights": {
+        "jaro_winkler": 0.26,
+        "levenshtein_normalized": 0.29,
+        "thefuzz_token_set_ratio": 0.25,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Normalize ä→ae, ö→oe, ü→ue, ß→ss.",
+        "Downweight particles; treat them optional."
+      ]
+    },
+    {
+      "id": "french",
+      "display_name": "French (diacritics, particles)",
+      "global_prevalence_rank": 16,
+      "estimated_population_share": 0.009,
+      "origin_group": ["France", "Francophone Africa", "Canada (QC)", "diaspora"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + surname; hyphenated given names common",
+      "particles": ["de", "du", "des", "le", "la"],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Jean-Luc Picard", "Émile Zola", "Charles de Gaulle"],
+      "typical_ambiguities": [
+        "Hyphenated given names split/merge.",
+        "Diacritics lost in foreign systems."
+      ],
+      "weights": {
+        "jaro_winkler": 0.27,
+        "levenshtein_normalized": 0.28,
+        "thefuzz_token_set_ratio": 0.25,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Normalize diacritics; treat hyphens as optional.",
+        "Downweight articles/particles."
+      ]
+    },
+    {
+      "id": "portuguese_brazilian",
+      "display_name": "Portuguese/Brazilian (multiple surnames possible)",
+      "global_prevalence_rank": 17,
+      "estimated_population_share": 0.008,
+      "origin_group": ["Portugal", "Brazil", "diaspora"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + (mother’s surname) + (father’s surname); order varies",
+      "particles": ["de", "da", "do", "dos", "das"],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Luís Inácio Lula da Silva", "Cristiano Ronaldo dos Santos Aveiro"],
+      "typical_ambiguities": [
+        "Particles and multiple surnames reorder or get dropped abroad.",
+        "Diacritics removed."
+      ],
+      "weights": {
+        "jaro_winkler": 0.23,
+        "levenshtein_normalized": 0.19,
+        "thefuzz_token_set_ratio": 0.40,
+        "cosine_similarity": 0.18
+      },
+      "matching_hints": [
+        "Token-set helps across reordered surnames.",
+        "Normalize/remove low-signal particles."
+      ]
+    },
+    {
+      "id": "polish_czech_slovak",
+      "display_name": "Polish/Czech/Slovak (gendered surnames, diacritics)",
+      "global_prevalence_rank": 18,
+      "estimated_population_share": 0.006,
+      "origin_group": ["Poland", "Czechia", "Slovakia"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + surname; gendered forms (e.g., -ová)",
+      "particles": [],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Jan Kowalski", "Anna Dvořáková", "Petr Novák"],
+      "typical_ambiguities": [
+        "Female suffixes (-ová) vs root surname.",
+        "Diacritics removed abroad."
+      ],
+      "weights": {
+        "jaro_winkler": 0.24,
+        "levenshtein_normalized": 0.31,
+        "thefuzz_token_set_ratio": 0.25,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Map gendered variants to base surname where appropriate.",
+        "Normalize diacritics."
+      ]
+    },
+    {
+      "id": "greek",
+      "display_name": "Greek (Latinized or Greek script)",
+      "global_prevalence_rank": 19,
+      "estimated_population_share": 0.003,
+      "origin_group": ["Greece", "Cyprus", "diaspora"],
+      "scripts": ["Greek", "Latin transliterations"],
+      "name_order": "given_first",
+      "structure": "given + surname; gendered endings (e.g., -ou)",
+      "particles": [],
+      "diacritics": true,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Giannis Antetokounmpo", "Maria Papadopoulou"],
+      "typical_ambiguities": [
+        "Transliteration of certain consonant clusters varies (mp/mb, gk).",
+        "Accent marks dropped."
+      ],
+      "weights": {
+        "jaro_winkler": 0.25,
+        "levenshtein_normalized": 0.28,
+        "thefuzz_token_set_ratio": 0.27,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Equivalence tables for common transliterations.",
+        "Normalize accents."
+      ]
+    },
+    {
+      "id": "thai",
+      "display_name": "Thai (very long surnames, nicknames common)",
+      "global_prevalence_rank": 20,
+      "estimated_population_share": 0.002,
+      "origin_group": ["Thailand"],
+      "scripts": ["Thai", "Latin transliterations"],
+      "name_order": "given_first",
+      "structure": "given + very long surname; nicknames widely used",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "modern",
+      "examples": ["Prayut Chan-o-cha", "Ariya Jutanugarn"],
+      "typical_ambiguities": [
+        "Nicknames may replace given names in datasets.",
+        "Hyphenation and spacing vary in transliteration."
+      ],
+      "weights": {
+        "jaro_winkler": 0.29,
+        "levenshtein_normalized": 0.26,
+        "thefuzz_token_set_ratio": 0.25,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Capture and compare nicknames as alternates.",
+        "Levenshtein helps with long surnames; allow small edit distance."
+      ]
+    },
+    {
+      "id": "ethiopian_eritrean_habesha",
+      "display_name": "Ethiopian/Eritrean (Habesha; patronymic, no family surname)",
+      "global_prevalence_rank": 21,
+      "estimated_population_share": 0.002,
+      "origin_group": ["Ethiopia", "Eritrea"],
+      "scripts": ["Ge'ez (Ethiopic)", "Latin transliterations"],
+      "name_order": "given_first",
+      "structure": "given + father's given (patronymic); no family surname",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "traditional",
+      "examples": ["Abiy Ahmed Ali", "Haile Gebrselassie"],
+      "typical_ambiguities": [
+        "Second token is patronymic, not family; may be omitted.",
+        "Order consistency varies abroad."
+      ],
+      "weights": {
+        "jaro_winkler": 0.31,
+        "levenshtein_normalized": 0.19,
+        "thefuzz_token_set_ratio": 0.30,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Treat last token cautiously; it’s not a hereditary surname.",
+        "Token-set helps when patronymic is omitted."
+      ]
+    },
+    {
+      "id": "icelandic_patronymic",
+      "display_name": "Icelandic (patronymic/matronymic, not fixed surname)",
+      "global_prevalence_rank": 22,
+      "estimated_population_share": 0.00005,
+      "origin_group": ["Iceland"],
+      "scripts": ["Latin (with diacritics)"],
+      "name_order": "given_first",
+      "structure": "given + patronymic/matronymic (-son/-dóttir)",
+      "particles": [],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "traditional",
+      "examples": ["Jón Jónsson", "Guðrún Ólafsdóttir"],
+      "typical_ambiguities": [
+        "Last token is not a family name; siblings can differ.",
+        "Diacritics often lost abroad."
+      ],
+      "weights": {
+        "jaro_winkler": 0.34,
+        "levenshtein_normalized": 0.26,
+        "thefuzz_token_set_ratio": 0.22,
+        "cosine_similarity": 0.18
+      },
+      "matching_hints": [
+        "De-emphasize last-token familial linkage.",
+        "Normalize diacritics; consider father/mother given name separately."
+      ]
+    },
+    {
+      "id": "dutch_belgian_particles",
+      "display_name": "Dutch/Belgian (particles van/de/der)",
+      "global_prevalence_rank": 23,
+      "estimated_population_share": 0.002,
+      "origin_group": ["Netherlands", "Belgium"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + particle + surname",
+      "particles": ["van", "de", "der", "van der", "van de"],
+      "diacritics": false,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Vincent van Gogh", "Ruud van Nistelrooij", "Kim De Bock"],
+      "typical_ambiguities": [
+        "Particles may be capitalized or attached.",
+        "Sorting rules vary (van Gogh under G)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.28,
+        "levenshtein_normalized": 0.22,
+        "thefuzz_token_set_ratio": 0.32,
+        "cosine_similarity": 0.18
+      },
+      "matching_hints": [
+        "Normalize/ignore particles for core match; keep for precision.",
+        "Token-set handles spacing variations."
+      ]
+    },
+    {
+      "id": "irish_scottish_gaelic_prefixes",
+      "display_name": "Irish/Scottish Gaelic (O'/Mac/Mc prefixes)",
+      "global_prevalence_rank": 24,
+      "estimated_population_share": 0.003,
+      "origin_group": ["Ireland", "Scotland", "diaspora"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + surname (prefix variants common)",
+      "particles": ["O'", "Ó", "Mac", "Mc", "Nic"],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["O'Connor", "McDonald", "MacKenzie", "Ó Briain"],
+      "typical_ambiguities": [
+        "O'/Ó and Mc/Mac/Nic variants.",
+        "Apostrophes omitted in data (OBrien)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.30,
+        "levenshtein_normalized": 0.27,
+        "thefuzz_token_set_ratio": 0.26,
+        "cosine_similarity": 0.17
+      },
+      "matching_hints": [
+        "Normalize apostrophes and mac/mc equivalence.",
+        "Allow prefix-insensitive match."
+      ]
+    },
+    {
+      "id": "slavic_south_balkan",
+      "display_name": "South Slavic/Balkan (Latin/Cyrillic mix)",
+      "global_prevalence_rank": 25,
+      "estimated_population_share": 0.004,
+      "origin_group": ["Serbia", "Croatia", "Bosnia", "North Macedonia", "Montenegro", "Bulgaria"],
+      "scripts": ["Latin", "Cyrillic"],
+      "name_order": "given_first",
+      "structure": "given + surname; -ić/-ic common",
+      "particles": [],
+      "diacritics": true,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Novak Đoković", "Luka Modrić", "Milan Petrović"],
+      "typical_ambiguities": [
+        "Đ/Ž/Ć/Č/Š transliteration (Dj/Zh/Cc/Ch/S).",
+        "Latin/Cyrillic switching."
+      ],
+      "weights": {
+        "jaro_winkler": 0.25,
+        "levenshtein_normalized": 0.30,
+        "thefuzz_token_set_ratio": 0.25,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Map diacritics to ascii equivalents for baseline.",
+        "Maintain diacritic-aware secondary check for precision."
+      ]
+    },
+    {
+      "id": "hebrew_israeli",
+      "display_name": "Hebrew/Israeli (Latinized or Hebrew script)",
+      "global_prevalence_rank": 26,
+      "estimated_population_share": 0.001,
+      "origin_group": ["Israel", "diaspora"],
+      "scripts": ["Hebrew", "Latin transliteration"],
+      "name_order": "given_first",
+      "structure": "given + surname; occasional biblical/modern forms",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Benjamin Netanyahu", "Gal Gadot", "Itzhak Rabin"],
+      "typical_ambiguities": [
+        "Multiple transliterations (Yitzhak/Itzhak/Isaac).",
+        "Historic vs modern name variants."
+      ],
+      "weights": {
+        "jaro_winkler": 0.26,
+        "levenshtein_normalized": 0.24,
+        "thefuzz_token_set_ratio": 0.28,
+        "cosine_similarity": 0.22
+      },
+      "matching_hints": [
+        "Use transliteration tables; consider common anglicizations.",
+        "Token-set for middle tokens."
+      ]
+    },
+    {
+      "id": "romance_hyphenated_double_barrel",
+      "display_name": "Hyphenated/Double-barrel (general Western)",
+      "global_prevalence_rank": 27,
+      "estimated_population_share": 0.005,
+      "origin_group": ["Western Europe", "Americas"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + hyphenated/double surname",
+      "particles": [],
+      "diacritics": "possible",
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "modern",
+      "examples": ["Emma Watson-Smith", "Jean-Paul Sartre"],
+      "typical_ambiguities": [
+        "Hyphen dropped or replaced by space.",
+        "Order changes in double surnames."
+      ],
+      "weights": {
+        "jaro_winkler": 0.22,
+        "levenshtein_normalized": 0.18,
+        "thefuzz_token_set_ratio": 0.45,
+        "cosine_similarity": 0.15
+      },
+      "matching_hints": [
+        "Token-set best for reordered/space-vs-hyphen variants.",
+        "Normalize punctuation."
+      ]
+    },
+    {
+      "id": "chinese_westernized_order",
+      "display_name": "Chinese (Westernized order, middle names)",
+      "global_prevalence_rank": 28,
+      "estimated_population_share": 0.05,
+      "origin_group": ["Global Chinese diaspora"],
+      "scripts": ["Latin (Pinyin/Anglicized)"],
+      "name_order": "given_first",
+      "structure": "given + middle (optional) + family (Chinese)",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "modern",
+      "examples": ["Jackie Chan", "Lucy Liu", "Andrew Yang"],
+      "typical_ambiguities": [
+        "Anglicized given names replace original given names.",
+        "Family token appears last (Western order)."
+      ],
+      "weights": {
+        "jaro_winkler": 0.30,
+        "levenshtein_normalized": 0.15,
+        "thefuzz_token_set_ratio": 0.30,
+        "cosine_similarity": 0.25
+      },
+      "matching_hints": [
+        "Anchor on family token; allow Anglicized given variants.",
+        "Token-set tolerates added middle tokens."
+      ]
+    },
+    {
+      "id": "romanian_moldovan",
+      "display_name": "Romanian/Moldovan",
+      "global_prevalence_rank": 29,
+      "estimated_population_share": 0.003,
+      "origin_group": ["Romania", "Moldova"],
+      "scripts": ["Latin"],
+      "name_order": "given_first",
+      "structure": "given + surname",
+      "particles": [],
+      "diacritics": true,
+      "transliteration_variance": "low",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Ion Popescu", "Mihai Eminescu"],
+      "typical_ambiguities": [
+        "Diacritics (ș, ț, ă) may be dropped.",
+        "Slavic influence on endings in some regions."
+      ],
+      "weights": {
+        "jaro_winkler": 0.27,
+        "levenshtein_normalized": 0.28,
+        "thefuzz_token_set_ratio": 0.25,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Normalize diacritics; accept minor edits on common surnames.",
+        "Use token-set for middle tokens (rare)."
+      ]
+    },
+    {
+      "id": "ukrainian_latinized",
+      "display_name": "Ukrainian (Latinized; -enko, -uk, -chuk)",
+      "global_prevalence_rank": 30,
+      "estimated_population_share": 0.005,
+      "origin_group": ["Ukraine", "diaspora"],
+      "scripts": ["Cyrillic", "Latin transliterations"],
+      "name_order": "given_first",
+      "structure": "given + surname; patronymic sometimes present",
+      "particles": [],
+      "diacritics": false,
+      "transliteration_variance": "medium",
+      "modern_vs_traditional": "mixed",
+      "examples": ["Volodymyr Zelenskyy", "Andriy Shevchenko"],
+      "typical_ambiguities": [
+        "Transliteration variants (Y/ I; -yi/ -yy).",
+        "Patronymic used inconsistently abroad."
+      ],
+      "weights": {
+        "jaro_winkler": 0.26,
+        "levenshtein_normalized": 0.22,
+        "thefuzz_token_set_ratio": 0.32,
+        "cosine_similarity": 0.20
+      },
+      "matching_hints": [
+        "Equivalence for common suffixes (-enko, -chuk).",
+        "Treat patronymic as optional."
+      ]
+    }
+  ],
+  "default_weights": {
+    "jaro_winkler": 0.28,
+    "levenshtein_normalized": 0.22,
+    "thefuzz_token_set_ratio": 0.32,
+    "cosine_similarity": 0.18
+  }
+}
