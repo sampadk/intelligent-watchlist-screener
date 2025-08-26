@@ -1,5 +1,5 @@
 # app.py
-# V5.1 - FINAL VERSION with corrected display logic for all entity types
+# V5.3 - Final version focusing on data-driven score and qualitative LLM reasoning.
 
 import streamlit as st
 import pandas as pd
@@ -20,7 +20,7 @@ def init_models_and_data():
         return None, None, None
     
     genai.configure(api_key=api_key)
-    classification_model = genai.GenerativeModel('models/gemini-2.5-flash-lite')
+    classification_model = genai.GenerativeModel('models/gemini-2.5-flash-latest')
     types_index = load_name_type_weights("name_types.json")
     sdn_df = load_data("sdn_classified.parquet")
     return types_index, sdn_df, classification_model
@@ -34,9 +34,9 @@ if sdn_df is None:
 # --- UI Controls in Sidebar ---
 with st.sidebar:
     st.header("⚙️ Screening Controls")
-    entity_type = st.selectbox("Select Entity Type to Screen", ('Individual', 'Entity', 'Vessel', 'Aircraft'))
-    score_threshold = st.slider("Match Score Threshold", min_value=0.5, max_value=1.0, value=0.7, step=0.01)
-    page_size = st.slider("Matches to retrieve per batch", min_value=1, max_value=10, value=5)
+    entity_type = st.selectbox("Select Entity Type", ('Individual', 'Entity', 'Vessel', 'Aircraft'))
+    score_threshold = st.slider("Match Score Threshold", 0.5, 1.0, 0.7, 0.01, help="Only show matches with a final data-driven score above this value.")
+    page_size = st.slider("Matches per batch", 1, 10, 5)
 
 input_name = st.text_input("Enter the full name to screen:", "KIM Jong Un")
 
@@ -60,7 +60,7 @@ if st.button("Run Advanced Screening"):
                     weighted_score = get_weighted_ensemble_score(raw_scores, blended_weights)
                     
                     if weighted_score >= score_threshold:
-                        all_results.append({"candidate_name": row.name, "final_score": weighted_score, "screening_data": {"input_name_analysis": input_analysis, "candidate_analysis": candidate_analysis, "raw_scores": raw_scores, "blended_weights_used": blended_weights, "weighted_score": weighted_score}, "full_record": sdn_df.loc[row.Index].to_dict()})
+                        all_results.append({"candidate_name": row.name, "final_score": weighted_score, "screening_data": {"input_analysis": input_analysis, "candidate_analysis": candidate_analysis, "raw_scores": raw_scores, "blended_weights_used": blended_weights, "weighted_score": weighted_score}, "full_record": sdn_df.loc[row.Index].to_dict()})
         else: # Logic for Entity, Vessel, Aircraft
             with st.spinner(f"Screening for non-individual entities..."):
                 entity_map = {'Entity': 'entity', 'Vessel': 'vessel', 'Aircraft': 'aircraft'}
@@ -98,42 +98,44 @@ if 'results' in st.session_state and st.session_state.results:
                 assessment = llm_assessments.get(result['candidate_name'])
                 if not assessment: continue
                 
-                score = assessment['final_risk_score']
-                color = "red" if score > 85 else "orange" if score > 70 else "blue"
+                score = result['final_score']
+                color = "red" if score > 0.9 else "orange" if score > 0.8 else "blue"
 
                 with st.container(border=True):
                     col1, col2 = st.columns([3, 1])
                     with col1: st.markdown(f"#### Match: **{result['candidate_name']}**")
-                    with col2: st.markdown(f"<h4 style='text-align: right; color:{color};'>Final Risk Score: {score}</h4>", unsafe_allow_html=True)
+                    with col2: st.metric("Final Match Score", f"{score:.2%}", delta_color="off")
 
                     st.markdown("**LLM Reasoning:**")
-                    st.info(assessment['reasoning'])
+                    st.info(assessment.get('reasoning', 'No reasoning provided.'))
                     
                     with st.expander("Show Full Analysis Dossier"):
-                        # --- CORRECTED DISPLAY LOGIC ---
+                        screening_data = result.get('screening_data', {})
                         if entity_type == 'Individual':
-                            sd = result['screening_data']
+                            input_analysis = screening_data.get('input_analysis', {})
+                            candidate_analysis = screening_data.get('candidate_analysis', {})
                             st.markdown("##### Onomastic Classification")
                             c1, c2 = st.columns(2)
-                            c1.metric("Input Name Type", sd['input_analysis'].type_display_name, f"{sd['input_analysis'].engine} @ {sd['input_analysis'].probabilities.get(sd['input_analysis'].top_type_id, 0.0):.0%} conf.")
-                            c2.metric("Candidate Name Type", sd['candidate_analysis'].type_display_name, f"{sd['candidate_analysis'].engine} @ {sd['candidate_analysis'].probabilities.get(sd['candidate_analysis'].top_type_id, 0.0):.0%} conf.")
+                            c1.metric("Input Name Type", input_analysis.get('type_display_name', 'N/A'), f"{input_analysis.get('engine', 'N/A')} @ {input_analysis.get('probabilities', {}).get(input_analysis.get('top_type_id'), 0.0):.0%} conf.")
+                            c2.metric("Candidate Name Type", candidate_analysis.get('type_display_name', 'N/A'), f"{candidate_analysis.get('engine', 'N/A')} @ {candidate_analysis.get('probabilities', {}).get(candidate_analysis.get('top_type_id'), 0.0):.0%} conf.")
                             st.markdown("##### Evidence & Scoring")
                             c1, c2, c3 = st.columns(3)
-                            c1.write("**Blended Weights Used:**"); c1.json(sd['blended_weights_used'], expanded=False)
-                            c2.write("**Raw Similarity Scores:**"); c2.json(sd['raw_scores'], expanded=False)
-                            c3.metric("Weighted Score", f"{sd['weighted_score']:.4f}")
+                            c1.write("**Blended Weights:**"); c1.json(screening_data.get('blended_weights_used', {}), expanded=False)
+                            c2.write("**Raw Scores:**"); c2.json(screening_data.get('raw_scores', {}), expanded=False)
+                            c3.metric("Data-driven Score", f"{screening_data.get('weighted_score', 0.0):.4f}")
                         else: # Entity Display Logic
-                            sd = result['screening_data']['match_details']
+                            match_details = screening_data.get('match_details', {})
                             st.markdown("##### Entity Normalization & Matching")
                             c1, c2, c3 = st.columns(3)
-                            c1.text_area("Input", value=f"Original: {sd['original_1']}\n---\nNormalized: {sd['normalized_1']}", height=120)
-                            c2.text_area("Candidate", value=f"Original: {sd['original_2']}\n---\nNormalized: {sd['normalized_2']}", height=120)
-                            c3.metric("Normalized Match Score", f"{sd['match_score']:.4f}")
+                            c1.text_area("Input", value=f"Original: {match_details.get('original_1', '')}\n---\nNormalized: {match_details.get('normalized_1', '')}", height=120)
+                            c2.text_area("Candidate", value=f"Original: {match_details.get('original_2', '')}\n---\nNormalized: {match_details.get('normalized_2', '')}", height=120)
+                            c3.metric("Normalized Match Score", f"{match_details.get('match_score', 0.0):.4f}")
 
                         st.markdown("##### Key Parameters from LLM")
-                        for param in assessment['key_parameters']: st.markdown(f"- *{param}*")
-                        st.markdown("##### Full Watchlist Record"); st.json(result['full_record'], expanded=False)
+                        for param in assessment.get('key_parameters', []): st.markdown(f"- *{param}*")
+                        st.markdown("##### Full Watchlist Record"); st.json(result.get('full_record', {}), expanded=False)
 
+    # --- Pagination logic ---
     if end_idx < st.session_state.total_matches:
         if st.button("Retrieve Additional Matches"):
             st.session_state.page_number = st.session_state.get('page_number', 0) + 1
