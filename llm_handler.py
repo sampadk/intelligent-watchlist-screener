@@ -1,68 +1,51 @@
+# llm_handler.py
+# V5 - Contains dedicated batch reasoners for individuals and entities
+
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 import json
-from screening_logic import NameAnalysisResult # Import the dataclass for type hinting
+from typing import List, Dict, Any
+from screening_logic import NameAnalysisResult # Import for type hinting
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-REASONING_MODEL = genai.GenerativeModel('gemini-1.5-pro-latest')
+# Initialize the model once
+try:
+    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+    REASONING_MODEL = genai.GenerativeModel('gemini-1.5-pro-latest')
+except (TypeError, ValueError) as e:
+    REASONING_MODEL = None
+    print(f"Error initializing Google Generative AI: {e}")
 
-def get_llm_assessment(input_name: str, matched_name: str, screening_data: dict) -> dict | None:
-    
-    input_analysis: NameAnalysisResult = screening_data['input_name_analysis']
-    candidate_analysis: NameAnalysisResult = screening_data['candidate_name_analysis']
-    
-    # Get the confidence score for the top type classification
-    input_confidence = input_analysis.probabilities.get(input_analysis.top_type_id, 0.0)
-    candidate_confidence = candidate_analysis.probabilities.get(candidate_analysis.top_type_id, 0.0)
+def get_batch_llm_assessment(candidates_data: List[Dict[str, Any]]) -> Dict[str, Any] | None:
+    """Sends a batch of top INDIVIDUAL candidates to the LLM for reasoning in a single call."""
+    if not candidates_data or not REASONING_MODEL:
+        return None
 
-    # --- Start of The Fix ---
-    # We prepare these values outside the f-string for clarity and to avoid complex expressions inside it.
-    
-    # Find the name of the algorithm with the highest weight
-    best_weight_algo = max(screening_data['blended_weights_used'], key=screening_data['blended_weights_used'].get)
-    
-    # Find the name and value of the highest raw score
-    best_raw_score_algo = max(screening_data['raw_scores'], key=screening_data['raw_scores'].get)
-    best_raw_score_value = screening_data['raw_scores'][best_raw_score_algo]
+    prompt = f"""You are a financial crime compliance analyst. For each candidate in the JSON list below, provide a risk assessment. Your response MUST be a single JSON object where keys are the candidate names and values are another JSON object with 'final_risk_score', 'reasoning', and 'key_parameters'.
 
-    prompt = f"""
-    You are an expert financial crime compliance analyst. Your task is to provide a detailed, structured risk assessment for a potential sanctions list match based on a sophisticated onomastic analysis.
-
-    **Case Details:**
-    - Name to be Screened: "{input_name}"
-      - Classified as: '{input_analysis.type_display_name}' (Confidence: {input_confidence:.0%})
-    - Potential Match from Watchlist: "{matched_name}"
-      - Classified as: '{candidate_analysis.type_display_name}' (Confidence: {candidate_confidence:.0%})
-
-    **Evidence Dossier:**
-    1.  **Onomastic Weights Used (Blended):** {json.dumps(screening_data['blended_weights_used'])}
-    2.  **Raw Similarity Scores:** {json.dumps(screening_data['raw_scores'])}
-    3.  **Final Weighted Ensemble Score:** {screening_data['weighted_score']}
-
-    **Your Task:**
-    Based on the complete evidence dossier, generate a comprehensive assessment. Your response MUST be a single, valid JSON object with the following structure:
-    {{
-      "final_risk_score": <An integer from 0 to 100 representing your final confidence in the match.>,
-      "reasoning": "<A detailed paragraph explaining your score. Justify your conclusion by referencing how the onomastic classifications (and their confidence scores) influenced the weights and how the raw scores support or contradict the final weighted score.>",
-      "key_parameters": [
-        "Input name classified as '{input_analysis.type_display_name}' ({input_confidence:.0%} confidence).",
-        "Candidate name classified as '{candidate_analysis.type_display_name}' ({candidate_confidence:.0%} confidence).",
-        "The blended weights prioritized the '{best_weight_algo}' algorithm.",
-        "The final data-driven weighted score was {screening_data['weighted_score']}.",
-        "The raw score '{best_raw_score_algo}' of {best_raw_score_value} was the most significant individual indicator."
-      ]
-    }}
-    """
-    # --- End of The Fix ---
+{json.dumps(candidates_data, indent=2)}"""
     
     try:
         response = REASONING_MODEL.generate_content(prompt)
-        json_response_str = response.text.strip().replace("```json", "").replace("```", "").strip()
-        result = json.loads(json_response_str)
-        return result
+        return json.loads(response.text.strip().replace("```json", "").replace("```", "").strip())
     except Exception as e:
-        print(f"An error occurred with the LLM or JSON parsing: {e}")
-        return {"final_risk_score": 0, "reasoning": f"Error during analysis: {e}", "key_parameters": []}
+        print(f"An error occurred with the batch individual LLM: {e}")
+        return {item['candidate_name']: {"final_risk_score": 0, "reasoning": f"Error: {e}", "key_parameters": []} for item in candidates_data}
+
+def get_batch_entity_llm_assessment(candidates_data: List[Dict[str, Any]]) -> Dict[str, Any] | None:
+    """Sends a batch of top ENTITY candidates to the LLM for reasoning in a single call."""
+    if not candidates_data or not REASONING_MODEL:
+        return None
+
+    prompt = f"""You are a compliance analyst. For each non-individual entity in the JSON list below, provide a brief risk assessment. Your response MUST be a single JSON object where keys are the candidate names and values are another JSON object with 'final_risk_score', 'reasoning', and 'key_parameters'.
+
+{json.dumps(candidates_data, indent=2)}"""
+    
+    try:
+        response = REASONING_MODEL.generate_content(prompt)
+        return json.loads(response.text.strip().replace("```json", "").replace("```", "").strip())
+    except Exception as e:
+        print(f"An error occurred with the batch entity LLM: {e}")
+        return {item['candidate_name']: {"final_risk_score": 0, "reasoning": f"Error: {e}", "key_parameters": []} for item in candidates_data}

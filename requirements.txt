@@ -6,3 +6,5 @@ google-generativeai
 python-dotenv
 thefuzz
 python-Levenshtein
+pyarrow
+tqdm
