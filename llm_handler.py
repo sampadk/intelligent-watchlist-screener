@@ -18,6 +18,16 @@ def get_llm_assessment(input_name: str, matched_name: str, screening_data: dict)
     input_confidence = input_analysis.probabilities.get(input_analysis.top_type_id, 0.0)
     candidate_confidence = candidate_analysis.probabilities.get(candidate_analysis.top_type_id, 0.0)
 
+    # --- Start of The Fix ---
+    # We prepare these values outside the f-string for clarity and to avoid complex expressions inside it.
+    
+    # Find the name of the algorithm with the highest weight
+    best_weight_algo = max(screening_data['blended_weights_used'], key=screening_data['blended_weights_used'].get)
+    
+    # Find the name and value of the highest raw score
+    best_raw_score_algo = max(screening_data['raw_scores'], key=screening_data['raw_scores'].get)
+    best_raw_score_value = screening_data['raw_scores'][best_raw_score_algo]
+
     prompt = f"""
     You are an expert financial crime compliance analyst. Your task is to provide a detailed, structured risk assessment for a potential sanctions list match based on a sophisticated onomastic analysis.
 
@@ -40,11 +50,13 @@ def get_llm_assessment(input_name: str, matched_name: str, screening_data: dict)
       "key_parameters": [
         "Input name classified as '{input_analysis.type_display_name}' ({input_confidence:.0%} confidence).",
         "Candidate name classified as '{candidate_analysis.type_display_name}' ({candidate_confidence:.0%} confidence).",
-        "The blended weights prioritized the '{max(screening_data['blended_weights_used'], key=screening_data['blended_weights_used'])}' algorithm.",
-        "The final data-driven weighted score was {screening_data['weighted_score']}."
+        "The blended weights prioritized the '{best_weight_algo}' algorithm.",
+        "The final data-driven weighted score was {screening_data['weighted_score']}.",
+        "The raw score '{best_raw_score_algo}' of {best_raw_score_value} was the most significant individual indicator."
       ]
     }}
     """
+    # --- End of The Fix ---
     
     try:
         response = REASONING_MODEL.generate_content(prompt)
