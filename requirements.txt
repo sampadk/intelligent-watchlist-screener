@@ -1,0 +1,8 @@
+pandas
+streamlit
+jellyfish
+scikit-learn
+google-generativeai
+python-dotenv
+thefuzz
+python-Levenshtein
