@@ -13,7 +13,7 @@ load_dotenv()
 # Initialize the model once
 try:
     genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-    REASONING_MODEL = genai.GenerativeModel('gemini-1.5-pro-latest')
+    REASONING_MODEL = genai.GenerativeModel('models/gemini-2.5-flash-lite')
 except (TypeError, ValueError) as e:
     REASONING_MODEL = None
     print(f"Error initializing Google Generative AI: {e}")

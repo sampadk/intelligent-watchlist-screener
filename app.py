@@ -20,7 +20,7 @@ def init_models_and_data():
         return None, None, None
     
     genai.configure(api_key=api_key)
-    classification_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    classification_model = genai.GenerativeModel('models/gemini-2.5-flash-lite')
     types_index = load_name_type_weights("name_types.json")
     sdn_df = load_data("sdn_classified.parquet")
     return types_index, sdn_df, classification_model

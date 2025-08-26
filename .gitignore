@@ -209,3 +209,4 @@ __marimo__/
 preprocess_sdn.py
 verify_data.py
 sdn.csv
+classification_cache.json
