@@ -1,5 +1,5 @@
 # app.py
-# V5.9.5 (Final Corrected Version) - Fixed entity filtering and restored all logic.
+# V5.9.6 (Final Fix) - Added the crucial data cleaning step for the 'type' column.
 
 import streamlit as st
 import pandas as pd
@@ -96,9 +96,8 @@ if st.session_state.get('run_search', False):
                 entity_map = {'Entity': 'entity', 'Vessel': 'vessel', 'Aircraft': 'aircraft'}
                 target_type_string = entity_map.get(entity_type)
                 
-                # --- THE FIX: Make the filter case-insensitive and handle placeholders ---
-                # Clean the 'type' column before filtering
-                clean_type_series = sdn_df['type'].str.lower().replace('-0-', 'entity', regex=False)
+                # --- THE FIX: This cleaning logic now matches the debug script ---
+                clean_type_series = sdn_df['type'].str.lower().str.strip().replace('-0-', 'entity', regex=False)
                 target_df = sdn_df[clean_type_series == target_type_string].copy()
                 
                 for row in target_df.itertuples():
@@ -109,7 +108,6 @@ if st.session_state.get('run_search', False):
         st.session_state.results = sorted(all_results, key=lambda x: x['final_score'], reverse=True)
         st.session_state.total_matches = len(st.session_state.results)
         
-        # This message is now handled in the display logic section
         st.rerun()
 
 # --- Display Logic ---
