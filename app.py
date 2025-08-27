@@ -1,5 +1,5 @@
 # app.py
-# V5.6 - Final version with corrected model names and KeyError fix.
+# V5.7 - Fixed AttributeError and StreamlitDuplicateElementId errors.
 
 import streamlit as st
 import pandas as pd
@@ -20,7 +20,6 @@ def init_models_and_data():
         return None, None, None
     
     genai.configure(api_key=api_key)
-    # Using the correct model name for the live app's classification
     classification_model = genai.GenerativeModel('models/gemini-2.5-flash-lite')
     types_index = load_name_type_weights("name_types.json")
     sdn_df = load_data("sdn_classified.parquet")
@@ -55,7 +54,9 @@ if st.button("Run Advanced Screening"):
             
             with st.spinner("Calculating final scores..."):
                 for row in top_candidates_df.itertuples():
-                    candidate_analysis = NameAnalysisResult(name=row.name, top_type_id=row.top_type_id, type_display_name=row.type_display_name, probabilities=row.probabilities if pd.notna(row.probabilities) else {}, engine=row.engine)
+                    # Ensure probabilities is a dict, not NaN
+                    probs = row.probabilities if pd.notna(row.probabilities) else {}
+                    candidate_analysis = NameAnalysisResult(name=row.name, top_type_id=row.top_type_id, type_display_name=row.type_display_name, probabilities=probs, engine=row.engine)
                     raw_scores = calculate_all_scores(input_name, row.name)
                     blended_weights = get_blended_weights(input_analysis, candidate_analysis, types_index)
                     weighted_score = get_weighted_ensemble_score(raw_scores, blended_weights)
@@ -87,10 +88,7 @@ if 'results' in st.session_state and st.session_state.results:
         st.subheader(f"Displaying matches {start_idx + 1} to {min(end_idx, st.session_state.total_matches)} of {st.session_state.total_matches}")
         
         with st.spinner("Getting detailed explanations from reasoning LLM..."):
-            # THE FIX: This list comprehension now creates the correct data structure
-            # that the LLM handler's error block expects.
             data_for_llm = [{**res['screening_data'], 'candidate_name': res['candidate_name']} for res in results_to_display]
-            
             if entity_type == 'Individual':
                 llm_assessments = get_batch_llm_assessment(data_for_llm)
             else:
@@ -117,12 +115,17 @@ if 'results' in st.session_state and st.session_state.results:
                     with st.expander("Show Full Analysis Dossier"):
                         screening_data = result.get('screening_data', {})
                         if entity_type == 'Individual':
-                            input_analysis = screening_data.get('input_analysis', {})
-                            candidate_analysis = screening_data.get('candidate_analysis', {})
+                            # --- BUG FIX 1: Use dot notation for dataclass objects ---
+                            input_analysis = screening_data.get('input_analysis')
+                            candidate_analysis = screening_data.get('candidate_analysis')
+                            if not input_analysis or not candidate_analysis:
+                                st.warning("Analysis data missing for this result.")
+                                continue
+
                             st.markdown("##### Onomastic Classification")
                             c1, c2 = st.columns(2)
-                            c1.metric("Input Name Type", input_analysis.get('type_display_name', 'N/A'), f"{input_analysis.get('engine', 'N/A')} @ {input_analysis.get('probabilities', {}).get(input_analysis.get('top_type_id'), 0.0):.0%} conf.")
-                            c2.metric("Candidate Name Type", candidate_analysis.get('type_display_name', 'N/A'), f"{candidate_analysis.get('engine', 'N/A')} @ {candidate_analysis.get('probabilities', {}).get(candidate_analysis.get('top_type_id'), 0.0):.0%} conf.")
+                            c1.metric("Input Name Type", input_analysis.type_display_name, f"{input_analysis.engine} @ {input_analysis.probabilities.get(input_analysis.top_type_id, 0.0):.0%} conf.")
+                            c2.metric("Candidate Name Type", candidate_analysis.type_display_name, f"{candidate_analysis.engine} @ {candidate_analysis.probabilities.get(candidate_analysis.top_type_id, 0.0):.0%} conf.")
                             st.markdown("##### Evidence & Scoring")
                             c1, c2, c3 = st.columns(3)
                             c1.write("**Blended Weights:**"); c1.json(screening_data.get('blended_weights_used', {}), expanded=False)
@@ -132,8 +135,9 @@ if 'results' in st.session_state and st.session_state.results:
                             match_details = screening_data.get('match_details', {})
                             st.markdown("##### Entity Normalization & Matching")
                             c1, c2, c3 = st.columns(3)
-                            c1.text_area("Input", value=f"Original: {match_details.get('original_1', '')}\n---\nNormalized: {match_details.get('normalized_1', '')}", height=120)
-                            c2.text_area("Candidate", value=f"Original: {match_details.get('original_2', '')}\n---\nNormalized: {match_details.get('normalized_2', '')}", height=120)
+                            # --- BUG FIX 2: Add unique keys to widgets in a loop ---
+                            c1.text_area("Input", value=f"Original: {match_details.get('original_1', '')}\n---\nNormalized: {match_details.get('normalized_1', '')}", height=120, key=f"input_{result['candidate_name']}")
+                            c2.text_area("Candidate", value=f"Original: {match_details.get('original_2', '')}\n---\nNormalized: {match_details.get('normalized_2', '')}", height=120, key=f"candidate_{result['candidate_name']}")
                             c3.metric("Normalized Match Score", f"{match_details.get('match_score', 0.0):.4f}")
 
                         st.markdown("##### Key Parameters from LLM")
