@@ -1,5 +1,5 @@
 # app.py
-# V5.9.2 (Corrected Version) - Restored full logic to fix IndentationError.
+# V5.9.3 (Debug Version) - Added a debug line and improved 'no matches' messaging.
 
 import streamlit as st
 import pandas as pd
@@ -75,7 +75,6 @@ if st.session_state.get('run_search', False):
         st.warning("Please enter a name.")
     else:
         all_results = []
-        # --- THE FIX IS HERE: Restored the full logic block ---
         if entity_type == 'Individual':
             with st.spinner("Analyzing input name and performing smart filtering..."):
                 input_analysis = batch_analyze_names_with_llm([input_name], classification_model, types_index)[input_name]
@@ -97,6 +96,9 @@ if st.session_state.get('run_search', False):
                 entity_map = {'Entity': 'entity', 'Vessel': 'vessel', 'Aircraft': 'aircraft'}
                 target_df = sdn_df[sdn_df['type'] == entity_map.get(entity_type)].copy()
                 
+                # --- DEBUGGING LINE ---
+                st.info(f"DEBUG: Found {len(target_df)} records of type '{entity_type}' in the data file before matching.")
+                
                 for row in target_df.itertuples():
                     match_details = normalize_and_match_entity(input_name, row.name)
                     if match_details['match_score'] >= score_threshold:
@@ -112,6 +114,7 @@ if st.session_state.get('run_search', False):
 
 # --- Display Logic ---
 if 'results' in st.session_state:
+    # If the search ran but found no results, show a message.
     if not st.session_state.results and st.session_state.get('total_matches') == 0:
         st.warning("No potential matches found for the given name and threshold.")
 
