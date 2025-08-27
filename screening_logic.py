@@ -1,5 +1,5 @@
 # screening_logic.py
-# V5 - Contains all logic for onomastics, entity matching, and smart filtering
+# V5.2 - Final version with all logic for onomastics and robust entity matching.
 
 import json
 import re
@@ -148,7 +148,7 @@ Example: {{"John Smith": {{"top_id": "english_anglo", "probabilities": {{"englis
 # --- 4. Similarity Scoring & Filtering ---
 def calculate_all_scores(name1: str, name2: str) -> Dict[str, float]:
     """Calculates all four pairwise similarity scores for individuals."""
-    n1, n2 = (name1 or "").strip().lower(), (name2 or "").strip().lower()
+    n1, n2 = str(name1 or "").strip().lower(), str(name2 or "").strip().lower()
     scores = {
         "jaro_winkler": jellyfish.jaro_winkler_similarity(n1, n2),
         "levenshtein_normalized": (1.0 - (jellyfish.levenshtein_distance(n1, n2) / max(len(n1), len(n2)))) if max(len(n1), len(n2)) > 0 else 0.0,
@@ -175,11 +175,17 @@ def get_weighted_ensemble_score(scores: Dict[str, float], weights: Dict[str, flo
 
 def normalize_and_match_entity(name1: str, name2: str) -> dict:
     """Normalizes and matches non-individual entities."""
-    n1_norm, n2_norm = (name1 or "").strip().lower(), (name2 or "").strip().lower()
-    rules = {r'\b(limited|ltd)\b': 'ltd', r'\b(company|co)\b': 'co', r'\b(incorporated|inc)\b': 'inc', r'\b(corporation|corp)\b': 'corp', r'\b(public limited company|plc)\b': 'plc', r'\b(shipping|shpg)\b': 'shp', r'\b(vessel|vsl)\b': '', r'[.,]': ''}
+    n1_norm, n2_norm = str(name1 or "").strip().lower(), str(name2 or "").strip().lower()
+    rules = {
+        r'\b(limited|ltd)\b': 'ltd', r'\b(company|co)\b': 'co', r'\b(incorporated|inc)\b': 'inc',
+        r'\b(corporation|corp)\b': 'corp', r'\b(public limited company|plc)\b': 'plc',
+        r'\b(shipping|shpg)\b': 'shp', r'\b(vessel|vsl)\b': '', r'[.,]': ''
+    }
     for p, r in rules.items():
         n1_norm, n2_norm = re.sub(p, r, n1_norm), re.sub(p, r, n2_norm)
+    
     n1_norm, n2_norm = ' '.join(n1_norm.split()), ' '.join(n2_norm.split())
+    
     return {
         "original_1": name1, "original_2": name2, "normalized_1": n1_norm, "normalized_2": n2_norm,
         "match_score": round(fuzz.token_sort_ratio(n1_norm, n2_norm) / 100.0, 4)
