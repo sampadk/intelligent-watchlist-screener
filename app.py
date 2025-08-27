@@ -1,5 +1,5 @@
 # app.py
-# V5.3 - Final version focusing on data-driven score and qualitative LLM reasoning.
+# V5.6 - Final version with corrected model names and KeyError fix.
 
 import streamlit as st
 import pandas as pd
@@ -20,7 +20,8 @@ def init_models_and_data():
         return None, None, None
     
     genai.configure(api_key=api_key)
-    classification_model = genai.GenerativeModel('models/gemini-2.5-flash-latest')
+    # Using the correct model name for the live app's classification
+    classification_model = genai.GenerativeModel('models/gemini-2.5-flash-lite')
     types_index = load_name_type_weights("name_types.json")
     sdn_df = load_data("sdn_classified.parquet")
     return types_index, sdn_df, classification_model
@@ -86,10 +87,14 @@ if 'results' in st.session_state and st.session_state.results:
         st.subheader(f"Displaying matches {start_idx + 1} to {min(end_idx, st.session_state.total_matches)} of {st.session_state.total_matches}")
         
         with st.spinner("Getting detailed explanations from reasoning LLM..."):
+            # THE FIX: This list comprehension now creates the correct data structure
+            # that the LLM handler's error block expects.
+            data_for_llm = [{**res['screening_data'], 'candidate_name': res['candidate_name']} for res in results_to_display]
+            
             if entity_type == 'Individual':
-                llm_assessments = get_batch_llm_assessment([res['screening_data'] for res in results_to_display])
+                llm_assessments = get_batch_llm_assessment(data_for_llm)
             else:
-                llm_assessments = get_batch_entity_llm_assessment([res['screening_data'] for res in results_to_display])
+                llm_assessments = get_batch_entity_llm_assessment(data_for_llm)
 
         if not llm_assessments:
             st.error("Could not get explanations from the reasoning LLM.")
