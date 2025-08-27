@@ -1,5 +1,5 @@
 # app.py
-# V5.9.1 (Debug Version) - Added a debug line to check entity filtering.
+# V5.9.2 (Corrected Version) - Restored full logic to fix IndentationError.
 
 import streamlit as st
 import pandas as pd
@@ -75,15 +75,27 @@ if st.session_state.get('run_search', False):
         st.warning("Please enter a name.")
     else:
         all_results = []
+        # --- THE FIX IS HERE: Restored the full logic block ---
         if entity_type == 'Individual':
-            # ... (Individual logic is unchanged) ...
+            with st.spinner("Analyzing input name and performing smart filtering..."):
+                input_analysis = batch_analyze_names_with_llm([input_name], classification_model, types_index)[input_name]
+                individuals_df = sdn_df[sdn_df['type'] == 'individual'].copy()
+                top_candidates_df = get_top_candidates_smart_filter(input_analysis, individuals_df, limit=50)
+            
+            with st.spinner("Calculating final scores..."):
+                for row in top_candidates_df.itertuples():
+                    probs = row.probabilities if pd.notna(row.probabilities) else {}
+                    candidate_analysis = NameAnalysisResult(name=row.name, top_type_id=row.top_type_id, type_display_name=row.type_display_name, probabilities=probs, engine=row.engine)
+                    raw_scores = calculate_all_scores(input_name, row.name)
+                    blended_weights = get_blended_weights(input_analysis, candidate_analysis, types_index)
+                    weighted_score = get_weighted_ensemble_score(raw_scores, blended_weights)
+                    
+                    if weighted_score >= score_threshold:
+                        all_results.append({"candidate_name": row.name, "final_score": weighted_score, "screening_data": {"input_analysis": input_analysis, "candidate_analysis": candidate_analysis, "raw_scores": raw_scores, "blended_weights_used": blended_weights, "weighted_score": weighted_score}, "full_record": sdn_df.loc[row.Index].to_dict()})
         else: # Logic for Entity, Vessel, Aircraft
             with st.spinner(f"Screening for non-individual entities..."):
                 entity_map = {'Entity': 'entity', 'Vessel': 'vessel', 'Aircraft': 'aircraft'}
                 target_df = sdn_df[sdn_df['type'] == entity_map.get(entity_type)].copy()
-                
-                # --- DEBUGGING LINE ---
-                st.info(f"Found {len(target_df)} records of type '{entity_type}' in the data file.")
                 
                 for row in target_df.itertuples():
                     match_details = normalize_and_match_entity(input_name, row.name)
@@ -93,16 +105,13 @@ if st.session_state.get('run_search', False):
         st.session_state.results = sorted(all_results, key=lambda x: x['final_score'], reverse=True)
         st.session_state.total_matches = len(st.session_state.results)
         
-        # Only show success message if matches are found
         if st.session_state.total_matches > 0:
             st.success(f"Analysis complete. Found {st.session_state.total_matches} potential matches above the {score_threshold} threshold.")
         
         st.rerun()
 
 # --- Display Logic ---
-# This section remains unchanged from the last correct version (V5.9)
 if 'results' in st.session_state:
-    # If the search ran but found no results, show a message.
     if not st.session_state.results and st.session_state.get('total_matches') == 0:
         st.warning("No potential matches found for the given name and threshold.")
 
